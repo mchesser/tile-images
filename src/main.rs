@@ -25,30 +25,53 @@ pub struct Opt {
 
     #[structopt(name = "IMAGE", parse(from_os_str))]
     images: Vec<PathBuf>,
+
+    #[structopt(short = "p", long = "pattern")]
+    pattern: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let opt = Opt::from_args();
 
-    if opt.images.is_empty() {
+    let mut files = opt.images;
+
+    if let Some(pattern) = opt.pattern {
+        let paths = match glob::glob(&pattern) {
+            Ok(paths) => paths,
+            Err(e) => {
+                eprintln!("Error: invalid pattern: {}", e);
+                process::exit(1);
+            }
+        };
+
+        for path in paths {
+            if let Ok(path) = path {
+                if path.is_file() {
+                    files.push(path);
+                }
+            }
+        }
+    }
+
+    if files.is_empty() {
         eprintln!("Error: at least one image must be specified");
         process::exit(1);
     }
 
     // Compute grid dimensions
     let other = |x: u32| {
-        let len = opt.images.len() as u32;
+        let len = files.len() as u32;
         len / x + if len % x != 0 { 1 } else { 0 }
     };
     let (rows, cols) = match (opt.rows, opt.columns) {
         (0, 0) => {
-            let columns = (opt.images.len() as f32).sqrt().ceil() as u32;
+            let columns = (files.len() as f32).sqrt().ceil() as u32;
             (other(columns), columns)
         }
         (a, 0) => (a, other(a)),
         (0, b) => (other(b), b),
         (a, b) => {
-            if a * b < opt.images.len() as u32 {
+            if a * b < files.len() as u32 {
                 eprintln!("Error: output grid not large enough");
                 process::exit(1);
             }
@@ -58,8 +81,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("grid: rows={} cols={}", rows, cols);
 
     let mut images: Vec<image::DynamicImage> = vec![];
-    for image in opt.images {
-        images.push(image::open(image)?);
+    for path in files {
+        images.push(image::open(path)?);
     }
 
     let max_width = images.iter().map(|i| i.width()).max().unwrap();

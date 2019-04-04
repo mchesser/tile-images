@@ -1,9 +1,10 @@
 [package]
 name = "tile-images"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Michael Chesser"]
 edition = "2018"
 
 [dependencies]
 image = "0.21.0"
 structopt = "0.2.14"
+glob = "0.3.0"
