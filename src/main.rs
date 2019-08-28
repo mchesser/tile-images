@@ -12,15 +12,19 @@ pub struct Opt {
     #[structopt(short = "c", long = "columns", default_value = "0")]
     columns: u32,
 
+    #[structopt(long)]
+    center: bool,
+
+    #[structopt(long = "center-vertical")]
+    center_vertical: bool,
+
+    #[structopt(long = "center-horizontal")]
+    center_horizontal: bool,
+
     #[structopt(short = "s", long = "scale", default_value = "1.0")]
     scale: f32,
 
-    #[structopt(
-        short = "o",
-        long = "output",
-        default_value = "output.png",
-        parse(from_os_str)
-    )]
+    #[structopt(short = "o", long = "output", default_value = "output.png", parse(from_os_str))]
     output: PathBuf,
 
     #[structopt(name = "IMAGE", parse(from_os_str))]
@@ -91,8 +95,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut output = image::ImageBuffer::new(max_width * cols, max_height * rows);
     for (i, image) in images.iter().enumerate() {
         let i = i as u32;
-        let dx = (i % cols) * max_width;
-        let dy = (i / cols) * max_height;
+
+        let mut dx = (i % cols) * max_width;
+        if opt.center || opt.center_horizontal {
+            dx += (max_width - image.width()) / 2;
+        }
+
+        let mut dy = (i / cols) * max_height;
+        if opt.center || opt.center_vertical {
+            dy += (max_height - image.height()) / 2;
+        }
+
         println!("Copying image: {}, to: ({},{})", i, dx, dy);
         output.copy_from(image, dx, dy);
     }
